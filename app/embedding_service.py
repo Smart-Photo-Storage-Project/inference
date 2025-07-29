@@ -1,14 +1,59 @@
 
-from sentence_transformers import SentenceTransformer
+from fastapi import Request
 from PIL import Image
 from io import BytesIO
+from app.qdrant import client, collection_name
+import uuid
+from qdrant_client.models import PointStruct
 
-img_model = SentenceTransformer("clip-ViT-B-32")
-text_model = SentenceTransformer("sentence-transformers/clip-ViT-B-32-multilingual-v1")
 
-def get_image_embedding(file_bytes: bytes):
+def get_image_embedding(file_bytes: bytes, request: Request):
     image = Image.open(BytesIO(file_bytes)).convert("RGB")
-    return img_model.encode(image)
+    return request.app.state.img_model.encode(image)
 
-def get_text_embedding(text: str):
-    return text_model.encode(text)
+def get_text_embedding(text: str, request: Request):
+    return request.app.state.text_model.encode(text)
+
+def embed_and_store_image(contents: bytes, name: str, user_id: str, upload_at: int, path: str, request: Request):
+    embedding = get_image_embedding(contents, request)
+    point_id = str(uuid.uuid4())
+    payload = {
+        "name": name,
+        "user_id": user_id,
+        "upload_at": upload_at,
+        "path": path
+    }
+
+    client.upsert(
+        collection_name=collection_name,
+        points=[
+            PointStruct(
+                id=point_id,
+                vector=embedding.tolist(),
+                payload=payload
+            )
+        ]
+    )
+
+    return point_id, payload
+
+def search_similar_images(embedding: list[float], top_k: int = 5):
+    search_result = client.search(
+        collection_name=collection_name,
+        query_vector=embedding,
+        limit=top_k,
+        with_payload=True
+    )
+    
+    results = []
+    for hit in search_result:
+        payload = hit.payload
+        results.append({
+            "id": str(hit.id),
+            "name": payload.get("name"),
+            "user_id": payload.get("user_id"),
+            "upload_at": payload.get("upload_at"),
+            "path": payload.get("path"),
+            "score": hit.score,
+        })
+    return results
