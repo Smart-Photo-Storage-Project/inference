@@ -3,9 +3,16 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from app.models import TextEmbeddingRequest
 from app.embedding_service import get_image_embedding, get_text_embedding
+from app.qdrant import client, collection_name, init_qdrant
+from qdrant_client.models import PointStruct
 import numpy as np
+import uuid
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup_event():
+    init_qdrant()
 
 @app.post("/embed/image")
 async def embed_image(
@@ -17,11 +24,29 @@ async def embed_image(
         contents = await file.read()
         embedding = get_image_embedding(contents)
 
-        return {
-            "embedding": embedding.tolist(),
+        payload = {
             "name": name,
             "user_id": user_id,
-            "upload_at": upload_at,
+            "upload_at": upload_at
+        }
+
+        point_id = str(uuid.uuid4())
+
+        client.upsert(
+            collection_name=collection_name,
+            points=[
+                PointStruct(
+                    id=point_id,
+                    vector=embedding.tolist(),
+                    payload=payload
+                )
+            ]
+        )
+
+        return {
+            "status": "stored in qdrant",
+            "point_id": point_id,
+            "metadata": payload
         }
 
     except Exception as e:
