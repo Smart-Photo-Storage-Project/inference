@@ -47,14 +47,22 @@ def embed_and_store_images_batch(
     return points
 
 
-def search_similar_images(embedding: list[float], top_k: int = 5):
+def search_similar_images(embedding: list[float], user_id: str, top_k: int = 5):
     search_result = client.search(
         collection_name=collection_name,
         query_vector=embedding,
         limit=top_k,
-        with_payload=True
+        with_payload=True,
+        query_filter={
+            "must": [
+                {
+                    "key": "user_id",
+                    "match": {"value": user_id}
+                }
+            ]
+        }
     )
-    
+
     results = []
     for hit in search_result:
         payload = hit.payload

@@ -58,7 +58,7 @@ async def embed_images(
 async def embed_text(request: Request, payload: TextEmbeddingRequest):
     try:
         embedding = get_text_embedding(payload.text, request)
-        results = search_similar_images(embedding.tolist(), top_k=5)
+        results = search_similar_images(embedding.tolist(), user_id=payload.user_id, top_k=12)
         return {"results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
