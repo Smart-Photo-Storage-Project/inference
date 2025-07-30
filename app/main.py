@@ -2,9 +2,12 @@
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
 from app.models import TextEmbeddingRequest
-from app.embedding_service import get_text_embedding, search_similar_images, embed_and_store_image
+from app.embedding_service import get_text_embedding, search_similar_images, embed_and_store_images_batch
 from app.qdrant import client, collection_name, init_qdrant
 from sentence_transformers import SentenceTransformer
+from typing import List
+from PIL import Image
+from io import BytesIO
 
 app = FastAPI()
 
@@ -17,26 +20,38 @@ async def load_models():
     app.state.img_model = SentenceTransformer("clip-ViT-B-32")
     app.state.text_model = SentenceTransformer("sentence-transformers/clip-ViT-B-32-multilingual-v1")
 
-@app.post("/embed/image")
-async def embed_image(
+@app.post("/embed/images")
+async def embed_images(
     request: Request,
-    file: UploadFile = File(...),
-    name: str = Form(...),
+    files: List[UploadFile] = File(...),
+    names: List[str] = Form(...),
     user_id: str = Form(...),
     upload_at: int = Form(...),
-    path: str = Form(...)):
+    paths: List[str] = Form(...)
+):
+    if not (len(files) == len(names) == len(paths)):
+        raise HTTPException(status_code=400, detail="Mismatch in lengths of files, names, and paths.")
+
     try:
-        contents = await file.read()
-        point_id, metadata = embed_and_store_image(contents, name, user_id, upload_at, path, request)
+        file_bytes_batch = [await f.read() for f in files]
+
+        points = embed_and_store_images_batch(
+            batch_file_bytes=file_bytes_batch,
+            names=names,
+            user_id=user_id,
+            upload_at=upload_at,
+            paths=paths,
+            request=request
+        )
 
         return {
             "status": "stored in qdrant",
-            "point_id": point_id,
-            "metadata": metadata
+            "stored_count": len(points),
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.post("/embed/text")

@@ -5,37 +5,47 @@ from io import BytesIO
 from app.qdrant import client, collection_name
 import uuid
 from qdrant_client.models import PointStruct
+from typing import List
 
 
-def get_image_embedding(file_bytes: bytes, request: Request):
-    image = Image.open(BytesIO(file_bytes)).convert("RGB")
-    return request.app.state.img_model.encode(image)
+def get_batch_image_embeddings(batch_file_bytes: List[bytes], request: Request):
+    images = [Image.open(BytesIO(b)).convert("RGB") for b in batch_file_bytes]
+    return request.app.state.img_model.encode(images)
 
 def get_text_embedding(text: str, request: Request):
     return request.app.state.text_model.encode(text)
 
-def embed_and_store_image(contents: bytes, name: str, user_id: str, upload_at: int, path: str, request: Request):
-    embedding = get_image_embedding(contents, request)
-    point_id = str(uuid.uuid4())
-    payload = {
-        "name": name,
-        "user_id": user_id,
-        "upload_at": upload_at,
-        "path": path
-    }
+def embed_and_store_images_batch(
+    batch_file_bytes: List[bytes],
+    names: List[str],
+    user_id: str,
+    upload_at: int,
+    paths: List[str],
+    request: Request
+):
+    embeddings = get_batch_image_embeddings(batch_file_bytes, request)
+    points = []
 
-    client.upsert(
-        collection_name=collection_name,
-        points=[
-            PointStruct(
-                id=point_id,
-                vector=embedding.tolist(),
-                payload=payload
-            )
-        ]
-    )
+    for i in range(len(batch_file_bytes)):
+        point_id = str(uuid.uuid4())
+        payload = {
+            "name": names[i],
+            "user_id": user_id,
+            "upload_at": upload_at,
+            "path": paths[i]
+        }
 
-    return point_id, payload
+        point = PointStruct(
+            id=point_id,
+            vector=embeddings[i].tolist(),
+            payload=payload
+        )
+        points.append(point)
+
+    client.upsert(collection_name=collection_name, points=points)
+
+    return points
+
 
 def search_similar_images(embedding: list[float], top_k: int = 5):
     search_result = client.search(
