@@ -1,8 +1,9 @@
 fastapi
 uvicorn
 sentence-transformers
-torch
 Pillow
 python-multipart
 qdrant-client
 python-dotenv
+torch==2.7.1+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu

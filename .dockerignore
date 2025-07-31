@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pkl
+*.pt
+*.zip
+*.tar.gz
+*.egg-info
+venv/
+.env
+.git/
+node_modules/
+data/
