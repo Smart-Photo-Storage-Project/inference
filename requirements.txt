@@ -5,3 +5,4 @@ torch
 Pillow
 python-multipart
 qdrant-client
+python-dotenv

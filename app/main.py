@@ -1,9 +1,10 @@
 # app/main.py
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request, Depends
 from app.models import TextEmbeddingRequest
 from app.embedding_service import get_text_embedding, search_similar_images, embed_and_store_images_batch
 from app.qdrant import client, collection_name, init_qdrant
+from app.api_key import verify_api_key
 from sentence_transformers import SentenceTransformer
 from typing import List
 from PIL import Image
@@ -54,7 +55,7 @@ async def embed_images(
 
 
 
-@app.post("/embed/text")
+@app.post("/embed/text", dependencies=[Depends(verify_api_key)])
 async def embed_text(request: Request, payload: TextEmbeddingRequest):
     try:
         embedding = get_text_embedding(payload.text, request)

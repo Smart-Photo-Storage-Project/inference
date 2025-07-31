@@ -9,6 +9,7 @@ __pycache__/
 # Virtual environment
 venv/
 .env/
+.env
 .env.*  # optional: ignore env files with credentials or secrets
 
 # Jupyter Notebook checkpoints
