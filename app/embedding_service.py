@@ -6,14 +6,17 @@ from app.qdrant import client, collection_name
 import uuid
 from qdrant_client.models import PointStruct
 from typing import List
+from sentence_transformers import SentenceTransformer
 
+img_model = SentenceTransformer("clip-ViT-B-32")
+text_model = SentenceTransformer("sentence-transformers/clip-ViT-B-32-multilingual-v1")
 
 def get_batch_image_embeddings(batch_file_bytes: List[bytes], request: Request):
     images = [Image.open(BytesIO(b)).convert("RGB") for b in batch_file_bytes]
-    return request.app.state.img_model.encode(images)
+    return img_model.encode(images)
 
 def get_text_embedding(text: str, request: Request):
-    return request.app.state.text_model.encode(text)
+    return text_model.encode(text)
 
 def embed_and_store_images_batch(
     batch_file_bytes: List[bytes],

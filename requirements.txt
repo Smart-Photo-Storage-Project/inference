@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 sentence-transformers
+aio-pika>=9.0.5
 Pillow
 python-multipart
 qdrant-client
