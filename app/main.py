@@ -91,6 +91,7 @@ async def handle_message(message: aio_pika.IncomingMessage):
             user_id = payload["user_id"]
             upload_at = payload["upload_at"]
             photos = payload["photos"]
+            batch_id = payload["batch_id"]
 
             paths = [p["path"] for p in photos]
             names = [p["name"] for p in photos]
@@ -103,6 +104,7 @@ async def handle_message(message: aio_pika.IncomingMessage):
                 names=names,
                 user_id=user_id,
                 upload_at=upload_at,
+                batch_id=batch_id,
                 paths=paths,
                 request=None 
             )
@@ -113,7 +115,8 @@ async def handle_message(message: aio_pika.IncomingMessage):
                     user_id=user_id,
                     name=result["name"],
                     path=result["path"],
-                    status=result["status"]
+                    status=result["status"],
+                    batch_id=batch_id
                 )
 
             print(f"Processed {len(paths)} images")
@@ -134,7 +137,7 @@ async def start_rabbitmq_consumer():
     print("Listening to RabbitMQ queue:", queue_name)
 
 
-async def publish_status(user_id: str, name: str, path: str, status: str):
+async def publish_status(user_id: str, name: str, path: str, status: str, batch_id: str):
     rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost/")
     connection = await aio_pika.connect_robust(rabbitmq_url)
     async with connection:
@@ -145,7 +148,8 @@ async def publish_status(user_id: str, name: str, path: str, status: str):
                     "user_id": user_id,
                     "name": name,
                     "path": path,
-                    "status": status
+                    "status": status,
+                    "batch_id": batch_id
                 }).encode()
             ),
             routing_key="embedding_results"

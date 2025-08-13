@@ -22,6 +22,7 @@ def embed_and_store_images_batch(
     batch_file_bytes: List[bytes],
     names: List[str],
     user_id: str,
+    batch_id: str,
     upload_at: int,
     paths: List[str],
     request: Request
@@ -36,7 +37,8 @@ def embed_and_store_images_batch(
             "name": names[i],
             "user_id": user_id,
             "upload_at": upload_at,
-            "path": paths[i]
+            "path": paths[i],
+            "batch_id": batch_id
         }
 
         point = PointStruct(
