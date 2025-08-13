@@ -98,7 +98,7 @@ async def handle_message(message: aio_pika.IncomingMessage):
             # Async fetch all image bytes from URL
             file_bytes_batch = await asyncio.gather(*(fetch_image_bytes(p) for p in paths))
 
-            embed_and_store_images_batch(
+            results = embed_and_store_images_batch(
                 batch_file_bytes=file_bytes_batch,
                 names=names,
                 user_id=user_id,
@@ -106,6 +106,15 @@ async def handle_message(message: aio_pika.IncomingMessage):
                 paths=paths,
                 request=None 
             )
+
+            # Notify per image
+            for result in results:
+                await publish_status(
+                    user_id=user_id,
+                    name=result["name"],
+                    path=result["path"],
+                    status=result["status"]
+                )
 
             print(f"Processed {len(paths)} images")
 
@@ -123,3 +132,22 @@ async def start_rabbitmq_consumer():
 
     await queue.consume(handle_message)
     print("Listening to RabbitMQ queue:", queue_name)
+
+
+async def publish_status(user_id: str, name: str, path: str, status: str):
+    rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost/")
+    connection = await aio_pika.connect_robust(rabbitmq_url)
+    async with connection:
+        channel = await connection.channel()
+        await channel.default_exchange.publish(
+            aio_pika.Message(
+                body=json.dumps({
+                    "user_id": user_id,
+                    "name": name,
+                    "path": path,
+                    "status": status
+                }).encode()
+            ),
+            routing_key="embedding_results"
+        )
+

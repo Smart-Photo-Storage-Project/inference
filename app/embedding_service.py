@@ -28,6 +28,7 @@ def embed_and_store_images_batch(
 ):
     embeddings = get_batch_image_embeddings(batch_file_bytes, request)
     points = []
+    results = []
 
     for i in range(len(batch_file_bytes)):
         point_id = str(uuid.uuid4())
@@ -45,9 +46,16 @@ def embed_and_store_images_batch(
         )
         points.append(point)
 
+        results.append({
+            "point_id": point_id,
+            "name": names[i],
+            "path": paths[i],
+            "status": "completed"
+        })
+
     client.upsert(collection_name=collection_name, points=points)
 
-    return points
+    return results
 
 
 def search_similar_images(embedding: list[float], user_id: str, top_k: int = 5):
