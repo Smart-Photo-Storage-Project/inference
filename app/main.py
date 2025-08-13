@@ -11,8 +11,6 @@ from app.embedding_service import get_text_embedding, search_similar_images, emb
 from app.qdrant import client, collection_name, init_qdrant
 from app.api_key import verify_api_key
 from typing import List
-from PIL import Image
-from io import BytesIO
 
 app = FastAPI()
 
